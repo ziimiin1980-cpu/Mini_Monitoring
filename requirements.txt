@@ -5,6 +5,16 @@ fastapi==0.163.1
 # [standard] добавляет watchfiles (для --reload) и websockets
 uvicorn[standard]==0.54.0
 
+# Работа с базой данных PostgreSQL
+sqlalchemy==2.1.8
+psycopg[binary]==3.3.9
+
+# Миграции схемы базы данных
+alembic==1.20.1
+
+# Настройки приложения из файла .env
+pydantic-settings==2.16.3
+
 # --- только для тестов ---
 pytest==9.2.0
 httpx==0.28.1
