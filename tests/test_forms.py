@@ -45,6 +45,7 @@ def form_data(**overrides):
         "type": "http",
         "url": "https://example.com",
         "expected_status": "200",
+        "status_mode": "exact",
         "host": "",
         "port": "",
         "process_name": "",
@@ -116,6 +117,26 @@ def test_create_target_with_empty_name_shows_error(client):
 
     assert response.status_code == 400
     assert "Имя цели" in response.text or "name" in response.text
+
+
+def test_create_target_with_any_status_mode(client, session):
+    response = client.post("/targets/new", data=form_data(status_mode="any"))
+
+    target = session.scalars(select(Target)).one()
+    assert response.status_code == 303
+    assert target.config["accept_any_status"] is True
+    # expected_status остаётся в config по умолчанию, но в этом режиме не используется
+    assert target.config["expected_status"] == 200
+
+
+def test_edit_form_preselects_any_status_mode(client):
+    client.post("/targets/new", data=form_data(status_mode="any"))
+    target = client.get("/api/targets").json()[0]
+
+    response = client.get(f"/targets/{target['id']}/edit")
+
+    assert response.status_code == 200
+    assert 'value="any" selected' in response.text
 
 
 def test_edit_form_is_prefilled(client):

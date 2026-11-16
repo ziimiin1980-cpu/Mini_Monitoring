@@ -41,6 +41,17 @@
           <input name="url" value="{{ values.url }}" placeholder="https://example.com">
         </label>
         <label>
+          <span>Что считать успехом</span>
+          <select name="status_mode" id="status-mode">
+            <option value="exact" {% if values.status_mode == "exact" %}selected{% endif %}>
+              Конкретный код ответа
+            </option>
+            <option value="any" {% if values.status_mode == "any" %}selected{% endif %}>
+              Любой ответ сервера, кроме 5xx (проверка доступности)
+            </option>
+          </select>
+        </label>
+        <label data-mode="exact">
           <span>Ожидаемый код ответа</span>
           <input name="expected_status" value="{{ values.expected_status }}" placeholder="200">
         </label>

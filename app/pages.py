@@ -41,6 +41,7 @@ def _form_values(target: Target | None = None) -> dict[str, Any]:
             "type": "http",
             "url": "",
             "expected_status": "200",
+            "status_mode": "exact",
             "host": "",
             "port": "",
             "process_name": "",
@@ -55,6 +56,7 @@ def _form_values(target: Target | None = None) -> dict[str, Any]:
         "type": target.type,
         "url": config.get("url", ""),
         "expected_status": config.get("expected_status", 200),
+        "status_mode": "any" if config.get("accept_any_status") else "exact",
         "host": config.get("host", ""),
         "port": config.get("port", ""),
         "process_name": config.get("name", ""),
@@ -81,6 +83,7 @@ def _build_payload(
     target_type: str,
     url: str,
     expected_status: str,
+    status_mode: str,
     host: str,
     port: str,
     process_name: str,
@@ -91,7 +94,9 @@ def _build_payload(
     """Собирает config под выбранный тип и проверяет его теми же схемами, что и API."""
     if target_type == "http":
         config: dict[str, Any] = {"url": url.strip()}
-        if expected_status.strip():
+        if status_mode == "any":
+            config["accept_any_status"] = True
+        elif expected_status.strip():
             config["expected_status"] = expected_status.strip()
     elif target_type == "tcp":
         config = {"host": host.strip(), "port": port.strip()}
@@ -175,6 +180,7 @@ def create_target_form(
     type: str = Form("http"),  # noqa: A002 - имя поля формы
     url: str = Form(""),
     expected_status: str = Form("200"),
+    status_mode: str = Form("exact"),
     host: str = Form(""),
     port: str = Form(""),
     process_name: str = Form(""),
@@ -188,6 +194,7 @@ def create_target_form(
         "type": type,
         "url": url,
         "expected_status": expected_status,
+        "status_mode": status_mode,
         "host": host,
         "port": port,
         "process_name": process_name,
@@ -201,6 +208,7 @@ def create_target_form(
         target_type=type,
         url=url,
         expected_status=expected_status,
+        status_mode=status_mode,
         host=host,
         port=port,
         process_name=process_name,
@@ -290,6 +298,7 @@ def update_target_form(
     type: str = Form("http"),  # noqa: A002 - имя поля формы
     url: str = Form(""),
     expected_status: str = Form("200"),
+    status_mode: str = Form("exact"),
     host: str = Form(""),
     port: str = Form(""),
     process_name: str = Form(""),
@@ -305,6 +314,7 @@ def update_target_form(
         "type": type,
         "url": url,
         "expected_status": expected_status,
+        "status_mode": status_mode,
         "host": host,
         "port": port,
         "process_name": process_name,
@@ -318,6 +328,7 @@ def update_target_form(
         target_type=type,
         url=url,
         expected_status=expected_status,
+        status_mode=status_mode,
         host=host,
         port=port,
         process_name=process_name,

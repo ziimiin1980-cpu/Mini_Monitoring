@@ -59,11 +59,29 @@ def test_create_http_target_applies_defaults(client):
         "url": "https://example.com/",
         "method": "GET",
         "expected_status": 200,
+        "accept_any_status": False,
     }
     assert body["interval_seconds"] == 60
     assert body["timeout_seconds"] == 5
     assert body["enabled"] is True
     assert body["created_at"] and body["updated_at"]
+
+
+def test_create_http_target_with_any_status(client):
+    response = client.post(
+        "/api/targets",
+        json=make_payload(
+            config={"url": "https://example.com", "accept_any_status": True}
+        ),
+    )
+
+    assert response.status_code == 201
+    assert response.json()["config"] == {
+        "url": "https://example.com/",
+        "method": "GET",
+        "expected_status": 200,
+        "accept_any_status": True,
+    }
 
 
 def test_create_tcp_and_process_targets(client):

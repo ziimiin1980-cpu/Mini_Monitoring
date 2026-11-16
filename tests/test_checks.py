@@ -18,11 +18,12 @@ class FakeClient:
     """Заглушка httpx.Client: запоминает вызов и возвращает заданный ответ."""
 
     calls: list[tuple[str, str]] = []
+    last_kwargs: dict = {}
     response = FakeResponse(200)
     exception: Exception | None = None
 
     def __init__(self, *args, **kwargs):
-        pass
+        FakeClient.last_kwargs = kwargs
 
     def __enter__(self):
         return self
@@ -40,6 +41,7 @@ class FakeClient:
 @pytest.fixture
 def fake_http(monkeypatch):
     FakeClient.calls = []
+    FakeClient.last_kwargs = {}
     FakeClient.response = FakeResponse(200)
     FakeClient.exception = None
     monkeypatch.setattr("app.checks.http.httpx.Client", FakeClient)
@@ -103,6 +105,39 @@ def test_http_without_url(fake_http):
     assert outcome.ok is False
     assert "url" in outcome.error
     assert fake_http.calls == []
+
+
+def test_http_sends_browser_headers(fake_http):
+    check_http({"url": "https://example.com"})
+
+    headers = fake_http.last_kwargs["headers"]
+    assert "Mozilla/5.0" in headers["User-Agent"]
+    assert "Accept" in headers
+
+
+def test_http_custom_user_agent(fake_http):
+    check_http({"url": "https://example.com", "user_agent": "MyMonitor/1.0"})
+
+    assert fake_http.last_kwargs["headers"]["User-Agent"] == "MyMonitor/1.0"
+
+
+def test_http_accept_any_status_success(fake_http):
+    fake_http.response = FakeResponse(403)
+
+    outcome = check_http({"url": "https://example.com", "accept_any_status": True})
+
+    assert outcome.ok is True
+    assert outcome.status_code == 403
+    assert outcome.error is None
+
+
+def test_http_accept_any_status_still_fails_on_5xx(fake_http):
+    fake_http.response = FakeResponse(503)
+
+    outcome = check_http({"url": "https://example.com", "accept_any_status": True})
+
+    assert outcome.ok is False
+    assert "503" in outcome.error
 
 
 # ---------- TCP ----------

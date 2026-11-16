@@ -18,6 +18,18 @@ class HttpCheckConfig(BaseModel):
     expected_status: int = Field(
         default=200, ge=100, le=599, description="Какой код ответа считается успехом"
     )
+    accept_any_status: bool = Field(
+        default=False,
+        description=(
+            "Считать успехом любой ответ сервера, кроме 5xx. "
+            "Удобно для проверки доступности, когда сайт отвечает 403 или 404"
+        ),
+    )
+    user_agent: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Свой User-Agent вместо браузерного (необязательно)",
+    )
 
 
 class TcpCheckConfig(BaseModel):
@@ -73,7 +85,7 @@ class TargetCreate(BaseModel):
                 f"Некорректные параметры для типа '{self.type}': {problems}"
             ) from exc
 
-        self.config = parsed.model_dump(mode="json")
+        self.config = parsed.model_dump(mode="json", exclude_none=True)
         return self
 
 
