@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api import router as api_router
+from app.api import status_router
 from app.db import get_db
 from app.scheduler import scheduler
 
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Mini Monitoring", version="0.1.0", lifespan=lifespan)
 app.include_router(api_router)
+app.include_router(status_router)
 
 
 @app.get("/health", response_class=JSONResponse)

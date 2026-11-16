@@ -93,6 +93,43 @@ class TargetRead(BaseModel):
     updated_at: datetime
 
 
+class LastCheck(BaseModel):
+    """Последняя проверка цели."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    checked_at: datetime
+    ok: bool
+    latency_ms: int | None
+    status_code: int | None
+    error: str | None
+
+
+class TargetStatus(TargetRead):
+    """Цель вместе с её текущим состоянием."""
+
+    last_check: LastCheck | None = None
+    uptime_24h: float | None = Field(
+        default=None,
+        description="Доля успешных проверок за 24 часа, %. null — проверок не было",
+    )
+    checks_24h: int = Field(default=0, description="Сколько проверок было за 24 часа")
+
+
+class HistoryItem(BaseModel):
+    """Одна запись истории проверок."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    checked_at: datetime
+    ok: bool
+    latency_ms: int | None
+    status_code: int | None
+    error: str | None
+    details: dict[str, Any] | None
+
+
 def _format_validation_error(exc: ValueError) -> str:
     """Собирает ошибки Pydantic в одну читаемую строку."""
     errors = getattr(exc, "errors", None)
