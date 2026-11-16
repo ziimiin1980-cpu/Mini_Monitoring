@@ -5,13 +5,13 @@
     "build": {
       "mode": "primary",
       "temperature": 0.2,
-      "steps": 20,
+      "steps": 100,
       "prompt": "{file:./prompts/build.txt}"
     },
     "plan": {
       "mode": "primary",
       "temperature": 0.1,
-      "steps": 12,
+      "steps": 50,
       "prompt": "{file:./prompts/plan.txt}"
     }
   }
