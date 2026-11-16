@@ -14,9 +14,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(
-    bind=engine, autoflush=False, expire_on_commit=False
-)
+TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
 @pytest.fixture
@@ -31,7 +29,7 @@ def client():
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app)
+    yield TestClient(app, base_url="http://127.0.0.1")
 
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
@@ -70,9 +68,7 @@ def test_create_http_target_applies_defaults(client):
 def test_create_http_target_with_any_status(client):
     response = client.post(
         "/api/targets",
-        json=make_payload(
-            config={"url": "https://example.com", "accept_any_status": True}
-        ),
+        json=make_payload(config={"url": "https://example.com", "accept_any_status": True}),
     )
 
     assert response.status_code == 201
@@ -87,15 +83,11 @@ def test_create_http_target_with_any_status(client):
 def test_create_tcp_and_process_targets(client):
     tcp = client.post(
         "/api/targets",
-        json=make_payload(
-            name="Роутер", type="tcp", config={"host": "192.168.1.1", "port": 443}
-        ),
+        json=make_payload(name="Роутер", type="tcp", config={"host": "192.168.1.1", "port": 443}),
     )
     process = client.post(
         "/api/targets",
-        json=make_payload(
-            name="Nginx", type="process", config={"name": "nginx.exe"}
-        ),
+        json=make_payload(name="Nginx", type="process", config={"name": "nginx.exe"}),
     )
 
     assert tcp.status_code == 201
@@ -139,9 +131,7 @@ def test_create_tcp_with_bad_port_returns_422(client):
 def test_create_with_unknown_config_key_returns_422(client):
     response = client.post(
         "/api/targets",
-        json=make_payload(
-            name="Хост", type="tcp", config={"host": "a", "port": 80, "portt": 80}
-        ),
+        json=make_payload(name="Хост", type="tcp", config={"host": "a", "port": 80, "portt": 80}),
     )
 
     assert response.status_code == 422

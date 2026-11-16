@@ -13,9 +13,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(
-    bind=engine, autoflush=False, expire_on_commit=False
-)
+TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
 @pytest.fixture
@@ -35,11 +33,14 @@ def client(session):
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app, follow_redirects=False)
+    client = TestClient(app, follow_redirects=False, base_url="http://127.0.0.1")
+    client.get("/")  # первый запрос выдаёт CSRF-cookie
+    client.csrf = client.cookies.get("csrf_token")
+    yield client
     app.dependency_overrides.clear()
 
 
-def form_data(**overrides):
+def form_data(client, **overrides):
     data = {
         "name": "Новый сайт",
         "type": "http",
@@ -52,6 +53,7 @@ def form_data(**overrides):
         "interval_seconds": "60",
         "timeout_seconds": "5",
         "enabled": "true",
+        "csrf_token": client.csrf,
     }
     data.update(overrides)
     return data
@@ -67,7 +69,12 @@ def test_new_target_form_renders(client):
 
 
 def test_create_target_from_form(client, session):
-    response = client.post("/targets/new", data=form_data())
+    response = client.post(
+        "/targets/new",
+        data=form_data(
+            client,
+        ),
+    )
 
     target = session.scalars(select(Target)).one()
     assert response.status_code == 303
@@ -81,7 +88,7 @@ def test_create_process_target_from_form(client, session):
     response = client.post(
         "/targets/new",
         data=form_data(
-            name="Nginx", type="process", process_name="nginx.exe", enabled=None
+            client, name="Nginx", type="process", process_name="nginx.exe", enabled=None
         ),
     )
 
@@ -94,7 +101,7 @@ def test_create_process_target_from_form(client, session):
 def test_create_target_with_invalid_port_shows_error(client, session):
     response = client.post(
         "/targets/new",
-        data=form_data(name="Плохой", type="tcp", host="a", port="70000"),
+        data=form_data(client, name="Плохой", type="tcp", host="a", port="70000"),
     )
 
     assert response.status_code == 400
@@ -103,9 +110,19 @@ def test_create_target_with_invalid_port_shows_error(client, session):
 
 
 def test_create_target_with_duplicate_name_shows_error(client, session):
-    client.post("/targets/new", data=form_data())
+    client.post(
+        "/targets/new",
+        data=form_data(
+            client,
+        ),
+    )
 
-    response = client.post("/targets/new", data=form_data())
+    response = client.post(
+        "/targets/new",
+        data=form_data(
+            client,
+        ),
+    )
 
     assert response.status_code == 400
     assert "уже существует" in response.text
@@ -113,14 +130,14 @@ def test_create_target_with_duplicate_name_shows_error(client, session):
 
 
 def test_create_target_with_empty_name_shows_error(client):
-    response = client.post("/targets/new", data=form_data(name=""))
+    response = client.post("/targets/new", data=form_data(client, name=""))
 
     assert response.status_code == 400
     assert "Имя цели" in response.text or "name" in response.text
 
 
 def test_create_target_with_any_status_mode(client, session):
-    response = client.post("/targets/new", data=form_data(status_mode="any"))
+    response = client.post("/targets/new", data=form_data(client, status_mode="any"))
 
     target = session.scalars(select(Target)).one()
     assert response.status_code == 303
@@ -130,7 +147,7 @@ def test_create_target_with_any_status_mode(client, session):
 
 
 def test_edit_form_preselects_any_status_mode(client):
-    client.post("/targets/new", data=form_data(status_mode="any"))
+    client.post("/targets/new", data=form_data(client, status_mode="any"))
     target = client.get("/api/targets").json()[0]
 
     response = client.get(f"/targets/{target['id']}/edit")
@@ -140,7 +157,12 @@ def test_edit_form_preselects_any_status_mode(client):
 
 
 def test_edit_form_is_prefilled(client):
-    client.post("/targets/new", data=form_data())
+    client.post(
+        "/targets/new",
+        data=form_data(
+            client,
+        ),
+    )
     target = client.get("/api/targets").json()[0]
 
     response = client.get(f"/targets/{target['id']}/edit")
@@ -151,13 +173,22 @@ def test_edit_form_is_prefilled(client):
 
 
 def test_update_target_from_form(client, session):
-    client.post("/targets/new", data=form_data())
+    client.post(
+        "/targets/new",
+        data=form_data(
+            client,
+        ),
+    )
     target_id = client.get("/api/targets").json()[0]["id"]
 
     response = client.post(
         f"/targets/{target_id}/edit",
         data=form_data(
-            name="Переименованный", type="tcp", host="10.0.0.1", port="22",
+            client,
+            name="Переименованный",
+            type="tcp",
+            host="10.0.0.1",
+            port="22",
             interval_seconds="300",
         ),
     )
@@ -173,25 +204,35 @@ def test_update_target_from_form(client, session):
 
 
 def test_update_to_duplicate_name_shows_error(client, session):
-    client.post("/targets/new", data=form_data(name="Первая"))
-    client.post("/targets/new", data=form_data(name="Вторая"))
+    client.post("/targets/new", data=form_data(client, name="Первая"))
+    client.post("/targets/new", data=form_data(client, name="Вторая"))
     target_id = client.get("/api/targets").json()[1]["id"]
 
-    response = client.post(f"/targets/{target_id}/edit", data=form_data(name="Первая"))
+    response = client.post(f"/targets/{target_id}/edit", data=form_data(client, name="Первая"))
 
     assert response.status_code == 400
     assert "уже существует" in response.text
 
 
 def test_toggle_target(client, session):
-    client.post("/targets/new", data=form_data())
+    client.post(
+        "/targets/new",
+        data=form_data(
+            client,
+        ),
+    )
     target_id = client.get("/api/targets").json()[0]["id"]
 
-    first = client.post(f"/targets/{target_id}/toggle", data={"next": f"/targets/{target_id}"})
+    first = client.post(
+        f"/targets/{target_id}/toggle",
+        data={"next": f"/targets/{target_id}", "csrf_token": client.csrf},
+    )
     session.expire_all()
     assert client.get(f"/api/targets/{target_id}").json()["enabled"] is False
 
-    second = client.post(f"/targets/{target_id}/toggle", data={"next": "/"})
+    second = client.post(
+        f"/targets/{target_id}/toggle", data={"next": "/", "csrf_token": client.csrf}
+    )
     assert client.get(f"/api/targets/{target_id}").json()["enabled"] is True
 
     assert first.status_code == 303
@@ -201,11 +242,17 @@ def test_toggle_target(client, session):
 
 
 def test_toggle_rejects_external_redirect(client):
-    client.post("/targets/new", data=form_data())
+    client.post(
+        "/targets/new",
+        data=form_data(
+            client,
+        ),
+    )
     target_id = client.get("/api/targets").json()[0]["id"]
 
     response = client.post(
-        f"/targets/{target_id}/toggle", data={"next": "https://evil.example"}
+        f"/targets/{target_id}/toggle",
+        data={"next": "https://evil.example", "csrf_token": client.csrf},
     )
 
     assert response.status_code == 303
@@ -213,10 +260,15 @@ def test_toggle_rejects_external_redirect(client):
 
 
 def test_delete_target_from_form(client, session):
-    client.post("/targets/new", data=form_data())
+    client.post(
+        "/targets/new",
+        data=form_data(
+            client,
+        ),
+    )
     target_id = client.get("/api/targets").json()[0]["id"]
 
-    response = client.post(f"/targets/{target_id}/delete")
+    response = client.post(f"/targets/{target_id}/delete", data={"csrf_token": client.csrf})
 
     assert response.status_code == 303
     assert response.headers["location"] == "/"

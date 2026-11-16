@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title }} — Mini Monitoring</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -19,6 +20,7 @@
     {% endif %}
 
     <form method="post" action="{{ action_url }}" class="target-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <label>
         <span>Имя цели</span>
         <input name="name" value="{{ values.name }}" required maxlength="100"

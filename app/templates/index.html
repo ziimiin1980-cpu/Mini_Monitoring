@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title }}</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -11,29 +12,38 @@
     <h1>Mini Monitoring</h1>
     <div class="topbar-right">
       <a class="button" href="/targets/new">+ Добавить цель</a>
+      {% if auth_enabled %}
+      <form method="post" action="/logout" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="secondary">Выйти</button>
+      </form>
+      {% endif %}
       <span id="updated" class="muted">загружаю данные…</span>
       <a href="/docs">API</a>
     </div>
   </header>
 
   <main>
-    <table>
-      <thead>
-        <tr>
-          <th>Цель</th>
-          <th>Тип</th>
-          <th>Статус</th>
-          <th>Задержка</th>
-          <th>Доступность 24 ч</th>
-          <th>Проверок 24 ч</th>
-          <th>Последняя проверка</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
+    <div class="table-wrap" id="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Цель</th>
+            <th class="hide-sm">Тип</th>
+            <th>Статус</th>
+            <th>Задержка</th>
+            <th>Доступность 24 ч</th>
+            <th class="hide-sm">Проверок 24 ч</th>
+            <th>Последняя проверка</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
 
-    <p id="empty" class="muted hidden">
-      Целей пока нет. Нажмите «+ Добавить цель» — или добавьте их через
+    <p id="empty" class="empty hidden">
+      Целей пока нет.<br>
+      Нажмите «+ Добавить цель» — или добавьте их через
       <a href="/docs">Swagger UI</a>.
     </p>
   </main>

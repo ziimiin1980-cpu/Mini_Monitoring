@@ -13,11 +13,24 @@ from app.db import get_db
 from app.messages import format_errors
 from app.models import CheckResult, Target
 from app.schemas import TargetCreate
+from app.security import CSRF_COOKIE_NAME, auth_enabled, verify_csrf
 
 # Пути считаем от файла модуля, а не от текущего каталога:
 # так страницы работают независимо от того, откуда запущен uvicorn.
 BASE_DIR = Path(__file__).resolve().parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+def _template_context(request: Request) -> dict[str, Any]:
+    """Общие переменные для всех шаблонов: CSRF-токен и признак включённого входа."""
+    csrf_token = getattr(request.state, "csrf_token", None) or request.cookies.get(
+        CSRF_COOKIE_NAME, ""
+    )
+    return {"csrf_token": csrf_token, "auth_enabled": auth_enabled()}
+
+
+templates = Jinja2Templates(
+    directory=BASE_DIR / "templates", context_processors=[_template_context]
+)
 
 router = APIRouter(tags=["Страницы"])
 
@@ -28,9 +41,7 @@ DUPLICATE_NAME_MESSAGE = "Цель с таким именем уже сущес�
 def _get_target_or_404(db: Session, target_id: int) -> Target:
     target = db.get(Target, target_id)
     if target is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Цель не найдена"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Цель не найдена")
     return target
 
 
@@ -150,9 +161,7 @@ def _redirect(next_url: str, default: str = "/") -> RedirectResponse:
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 def dashboard(request: Request) -> HTMLResponse:
     """Главная страница: таблица целей, данные подтягиваются из /api/status."""
-    return templates.TemplateResponse(
-        request, "index.html", {"page_title": "Mini Monitoring"}
-    )
+    return templates.TemplateResponse(request, "index.html", {"page_title": "Mini Monitoring"})
 
 
 # ВАЖНО: /targets/new объявлен раньше /targets/{target_id},
@@ -168,7 +177,11 @@ def new_target_form(request: Request) -> HTMLResponse:
     )
 
 
-@router.post("/targets/new", include_in_schema=False)
+@router.post(
+    "/targets/new",
+    dependencies=[Depends(verify_csrf)],
+    include_in_schema=False,
+)
 def create_target_form(
     request: Request,
     name: str = Form(""),
@@ -242,12 +255,34 @@ def create_target_form(
     return _redirect(f"/targets/{target.id}")
 
 
-@router.get(
-    "/targets/{target_id}", response_class=HTMLResponse, include_in_schema=False
-)
-def target_page(
-    request: Request, target_id: int, db: Session = Depends(get_db)
-) -> HTMLResponse:
+def _details(target: Target) -> list[tuple[str, str]]:
+    """Понятное человеку описание параметров цели (вместо сырого JSON)."""
+    config = target.config or {}
+    items: list[tuple[str, str]] = []
+
+    if target.type == "http":
+        items.append(("Адрес", str(config.get("url", "—"))))
+        items.append(("Метод", str(config.get("method", "GET"))))
+        if config.get("accept_any_status"):
+            items.append(("Условие успеха", "любой ответ сервера, кроме 5xx"))
+        else:
+            items.append(("Ожидаемый код", str(config.get("expected_status", 200))))
+        if config.get("user_agent"):
+            items.append(("User-Agent", str(config["user_agent"])))
+    elif target.type == "tcp":
+        items.append(("Хост", str(config.get("host", "—"))))
+        items.append(("Порт", str(config.get("port", "—"))))
+    elif target.type == "process":
+        items.append(("Имя процесса", str(config.get("name", "—"))))
+
+    items.append(("Проверять каждые", f"{target.interval_seconds} с"))
+    items.append(("Таймаут проверки", f"{target.timeout_seconds} с"))
+    items.append(("Состояние", "включена" if target.enabled else "выключена"))
+    return items
+
+
+@router.get("/targets/{target_id}", response_class=HTMLResponse, include_in_schema=False)
+def target_page(request: Request, target_id: int, db: Session = Depends(get_db)) -> HTMLResponse:
     """Страница одной цели с параметрами и историей проверок."""
     target = _get_target_or_404(db, target_id)
 
@@ -264,14 +299,13 @@ def target_page(
         {
             "page_title": target.name,
             "target": target,
+            "details": _details(target),
             "history": history,
         },
     )
 
 
-@router.get(
-    "/targets/{target_id}/edit", response_class=HTMLResponse, include_in_schema=False
-)
+@router.get("/targets/{target_id}/edit", response_class=HTMLResponse, include_in_schema=False)
 def edit_target_form(
     request: Request, target_id: int, db: Session = Depends(get_db)
 ) -> HTMLResponse:
@@ -285,7 +319,11 @@ def edit_target_form(
     )
 
 
-@router.post("/targets/{target_id}/edit", include_in_schema=False)
+@router.post(
+    "/targets/{target_id}/edit",
+    dependencies=[Depends(verify_csrf)],
+    include_in_schema=False,
+)
 def update_target_form(
     request: Request,
     target_id: int,
@@ -362,7 +400,11 @@ def update_target_form(
     return _redirect(f"/targets/{target_id}")
 
 
-@router.post("/targets/{target_id}/toggle", include_in_schema=False)
+@router.post(
+    "/targets/{target_id}/toggle",
+    dependencies=[Depends(verify_csrf)],
+    include_in_schema=False,
+)
 def toggle_target(
     target_id: int,
     next: str = Form("/"),  # noqa: A002 - имя поля формы
@@ -374,7 +416,11 @@ def toggle_target(
     return _redirect(next)
 
 
-@router.post("/targets/{target_id}/delete", include_in_schema=False)
+@router.post(
+    "/targets/{target_id}/delete",
+    dependencies=[Depends(verify_csrf)],
+    include_in_schema=False,
+)
 def delete_target_form(target_id: int, db: Session = Depends(get_db)):
     target = _get_target_or_404(db, target_id)
     db.delete(target)

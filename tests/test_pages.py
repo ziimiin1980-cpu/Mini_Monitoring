@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,9 +15,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(
-    bind=engine, autoflush=False, expire_on_commit=False
-)
+TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
 @pytest.fixture
@@ -37,7 +35,7 @@ def client(session):
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app)
+    yield TestClient(app, base_url="http://127.0.0.1")
     app.dependency_overrides.clear()
 
 
@@ -72,7 +70,7 @@ def test_target_page_shows_details_and_history(client, session):
     session.add(
         CheckResult(
             target_id=target["id"],
-            checked_at=datetime.now(timezone.utc),
+            checked_at=datetime.now(UTC),
             ok=False,
             latency_ms=5000,
             error="Таймаут: 5 с",

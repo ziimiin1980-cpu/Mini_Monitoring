@@ -32,14 +32,14 @@ def _override_db(session):
 @pytest.fixture
 def client_db_ok():
     app.dependency_overrides[get_db] = _override_db(FakeSession())
-    yield TestClient(app)
+    yield TestClient(app, base_url="http://127.0.0.1")
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
 def client_db_down():
     app.dependency_overrides[get_db] = _override_db(BrokenSession())
-    yield TestClient(app)
+    yield TestClient(app, base_url="http://127.0.0.1")
     app.dependency_overrides.clear()
 
 

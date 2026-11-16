@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,9 +16,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(
-    bind=engine, autoflush=False, expire_on_commit=False
-)
+TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
 @pytest.fixture
@@ -38,7 +36,7 @@ def client(session):
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app)
+    yield TestClient(app, base_url="http://127.0.0.1")
     app.dependency_overrides.clear()
 
 
@@ -84,7 +82,7 @@ def test_status_without_checks(client):
 
 def test_status_counts_uptime_and_last_check(client, session):
     target = make_target(client)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     add_result(session, target["id"], now - timedelta(hours=4), ok=True)
     add_result(session, target["id"], now - timedelta(hours=3), ok=True)
     add_result(session, target["id"], now - timedelta(hours=2), ok=True)
@@ -107,7 +105,7 @@ def test_status_counts_uptime_and_last_check(client, session):
 
 def test_status_ignores_checks_older_than_24h(client, session):
     target = make_target(client)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     add_result(session, target["id"], now - timedelta(hours=30), ok=False)
     add_result(session, target["id"], now - timedelta(hours=1), ok=True)
 
@@ -129,7 +127,7 @@ def test_status_includes_disabled_targets(client):
 
 def test_history_returns_newest_first_with_limit(client, session):
     target = make_target(client)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for index in range(1, 6):
         add_result(
             session,

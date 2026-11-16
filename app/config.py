@@ -33,5 +33,15 @@ class Settings(BaseSettings):
     # Уровень логирования: DEBUG, INFO, WARNING, ERROR
     log_level: str = "INFO"
 
+    # Пароль для входа в интерфейс. Пусто — вход не требуется (локальный режим)
+    app_password: str = ""
+
+    # Секрет для подписи cookie сессии. Пусто — генерируется при старте
+    # (после перезапуска приложения вход понадобится снова)
+    session_secret: str = ""
+
+    # Хосты, с которых разрешены запросы (защита от DNS-rebinding)
+    allowed_hosts: str = "127.0.0.1,localhost,::1"
+
 
 settings = Settings()

@@ -4,26 +4,38 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title }} — Mini Monitoring</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="topbar">
     <h1><a href="/">← Все цели</a></h1>
-    <div class="topbar-right actions">
-      <button id="check-now" data-target-id="{{ target.id }}">Проверить сейчас</button>
-      <a class="button secondary" href="/targets/{{ target.id }}/edit">Изменить</a>
+    <div class="topbar-right">
+      <div class="actions">
+        <button id="check-now" data-target-id="{{ target.id }}">Проверить сейчас</button>
+        <a class="button secondary" href="/targets/{{ target.id }}/edit">Изменить</a>
 
-      <form method="post" action="/targets/{{ target.id }}/toggle" class="inline">
-        <input type="hidden" name="next" value="/targets/{{ target.id }}">
-        <button type="submit" class="secondary">
-          {{ "Выключить" if target.enabled else "Включить" }}
-        </button>
-      </form>
+        <form method="post" action="/targets/{{ target.id }}/toggle" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="next" value="/targets/{{ target.id }}">
+          <button type="submit" class="secondary">
+            {{ "Выключить" if target.enabled else "Включить" }}
+          </button>
+        </form>
 
-      <form method="post" action="/targets/{{ target.id }}/delete" class="inline"
-            onsubmit="return confirm('Удалить цель и всю её историю проверок?');">
-        <button type="submit" class="danger">Удалить</button>
-      </form>
+        <form method="post" action="/targets/{{ target.id }}/delete" class="inline"
+              onsubmit="return confirm('Удалить цель и всю её историю проверок?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="danger">Удалить</button>
+        </form>
+
+        {% if auth_enabled %}
+        <form method="post" action="/logout" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="secondary">Выйти</button>
+        </form>
+        {% endif %}
+      </div>
     </div>
   </header>
 
@@ -31,55 +43,58 @@
     <h2>{{ target.name }}</h2>
 
     <dl class="details">
-      <dt>Тип</dt>
+      <dt>Тип проверки</dt>
       <dd>{{ target.type }}</dd>
 
-      <dt>Параметры</dt>
-      <dd><code>{{ target.config }}</code></dd>
-
-      <dt>Интервал</dt>
-      <dd>{{ target.interval_seconds }} с</dd>
-
-      <dt>Таймаут</dt>
-      <dd>{{ target.timeout_seconds }} с</dd>
-
-      <dt>Включена</dt>
-      <dd>{{ "да" if target.enabled else "нет" }}</dd>
+      {% for label, value in details %}
+      <dt>{{ label }}</dt>
+      <dd>{{ value }}</dd>
+      {% endfor %}
     </dl>
 
     <h2>Последние проверки</h2>
 
     {% if history %}
-    <table>
-      <thead>
-        <tr>
-          <th>Время</th>
-          <th>Результат</th>
-          <th>Задержка</th>
-          <th>Код</th>
-          <th>Ошибка</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for check in history %}
-        <tr>
-          <td>{{ check.checked_at.strftime("%d.%m.%Y %H:%M:%S") }}</td>
-          <td>
-            {% if check.ok %}
-            <span class="badge ok">успех</span>
-            {% else %}
-            <span class="badge fail">ошибка</span>
-            {% endif %}
-          </td>
-          <td>{% if check.latency_ms is not none %}{{ check.latency_ms }} мс{% else %}—{% endif %}</td>
-          <td>{% if check.status_code is not none %}{{ check.status_code }}{% else %}—{% endif %}</td>
-          <td>{{ check.error or "—" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Время</th>
+            <th>Результат</th>
+            <th>Задержка</th>
+            <th class="hide-sm">Код</th>
+            <th>Ошибка</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for check in history %}
+          <tr>
+            <td>
+              <time datetime="{{ check.checked_at.isoformat() }}" data-format="full">
+                {{ check.checked_at.strftime("%d.%m.%Y %H:%M:%S") }}
+              </time>
+            </td>
+            <td>
+              {% if check.ok %}
+              <span class="badge ok"><i class="dot"></i>успех</span>
+              {% else %}
+              <span class="badge fail"><i class="dot"></i>ошибка</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if check.latency_ms is none %}—{% elif check.latency_ms < 1 %}&lt; 1 мс{% else %}{{ check.latency_ms }} мс{% endif %}
+            </td>
+            <td class="hide-sm">
+              {% if check.status_code is not none %}{{ check.status_code }}{% else %}—{% endif %}
+            </td>
+            <td>{{ check.error or "—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% else %}
-    <p class="muted">Проверок ещё не было. Нажмите «Проверить сейчас».</p>
+    <p class="empty">Проверок ещё не было. Нажмите «Проверить сейчас».</p>
     {% endif %}
   </main>
 

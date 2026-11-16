@@ -12,9 +12,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(
-    bind=engine, autoflush=False, expire_on_commit=False
-)
+TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
 @pytest.fixture
@@ -29,7 +27,10 @@ def client():
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app)
+    client = TestClient(app, base_url="http://127.0.0.1")
+    client.get("/")  # первый запрос выдаёт CSRF-cookie
+    client.csrf = client.cookies.get("csrf_token")
+    yield client
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
 
@@ -94,6 +95,7 @@ def test_form_shows_readable_error(client):
             "port": "70000",
             "interval_seconds": "60",
             "timeout_seconds": "5",
+            "csrf_token": client.csrf,
         },
     )
 
@@ -107,7 +109,9 @@ def boom() -> None:
 
 def test_unexpected_error_returns_json_for_api(client):
     app.add_api_route("/api/__boom", boom, methods=["GET"])
-    client_without_raise = TestClient(app, raise_server_exceptions=False)
+    client_without_raise = TestClient(
+        app, raise_server_exceptions=False, base_url="http://127.0.0.1"
+    )
 
     response = client_without_raise.get("/api/__boom")
 
@@ -117,7 +121,9 @@ def test_unexpected_error_returns_json_for_api(client):
 
 def test_unexpected_error_returns_html_for_pages(client):
     app.add_api_route("/__boom-page", boom, methods=["GET"])
-    client_without_raise = TestClient(app, raise_server_exceptions=False)
+    client_without_raise = TestClient(
+        app, raise_server_exceptions=False, base_url="http://127.0.0.1"
+    )
 
     response = client_without_raise.get("/__boom-page")
 
