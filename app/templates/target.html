@@ -9,8 +9,21 @@
 <body>
   <header class="topbar">
     <h1><a href="/">← Все цели</a></h1>
-    <div class="topbar-right">
+    <div class="topbar-right actions">
       <button id="check-now" data-target-id="{{ target.id }}">Проверить сейчас</button>
+      <a class="button secondary" href="/targets/{{ target.id }}/edit">Изменить</a>
+
+      <form method="post" action="/targets/{{ target.id }}/toggle" class="inline">
+        <input type="hidden" name="next" value="/targets/{{ target.id }}">
+        <button type="submit" class="secondary">
+          {{ "Выключить" if target.enabled else "Включить" }}
+        </button>
+      </form>
+
+      <form method="post" action="/targets/{{ target.id }}/delete" class="inline"
+            onsubmit="return confirm('Удалить цель и всю её историю проверок?');">
+        <button type="submit" class="danger">Удалить</button>
+      </form>
     </div>
   </header>
 

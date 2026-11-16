@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }} — Mini Monitoring</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="/">← Все цели</a></h1>
+  </header>
+
+  <main>
+    <h2>{{ page_title }}</h2>
+
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ action_url }}" class="target-form">
+      <label>
+        <span>Имя цели</span>
+        <input name="name" value="{{ values.name }}" required maxlength="100"
+               placeholder="Например, Сайт компании">
+      </label>
+
+      <label>
+        <span>Тип проверки</span>
+        <select name="type" id="target-type">
+          <option value="http" {% if values.type == "http" %}selected{% endif %}>HTTP (сайт или API)</option>
+          <option value="tcp" {% if values.type == "tcp" %}selected{% endif %}>TCP (хост и порт)</option>
+          <option value="process" {% if values.type == "process" %}selected{% endif %}>Процесс (локальный)</option>
+        </select>
+      </label>
+
+      <fieldset data-for="http">
+        <legend>Параметры HTTP-проверки</legend>
+        <label>
+          <span>Адрес</span>
+          <input name="url" value="{{ values.url }}" placeholder="https://example.com">
+        </label>
+        <label>
+          <span>Ожидаемый код ответа</span>
+          <input name="expected_status" value="{{ values.expected_status }}" placeholder="200">
+        </label>
+      </fieldset>
+
+      <fieldset data-for="tcp">
+        <legend>Параметры TCP-проверки</legend>
+        <label>
+          <span>Хост</span>
+          <input name="host" value="{{ values.host }}" placeholder="192.168.1.1">
+        </label>
+        <label>
+          <span>Порт</span>
+          <input name="port" value="{{ values.port }}" placeholder="443">
+        </label>
+      </fieldset>
+
+      <fieldset data-for="process">
+        <legend>Параметры проверки процесса</legend>
+        <label>
+          <span>Имя процесса</span>
+          <input name="process_name" value="{{ values.process_name }}" placeholder="nginx.exe">
+        </label>
+      </fieldset>
+
+      <div class="row">
+        <label>
+          <span>Интервал проверки, с</span>
+          <input name="interval_seconds" type="number" min="5" max="86400" value="{{ values.interval_seconds }}">
+        </label>
+        <label>
+          <span>Таймаут проверки, с</span>
+          <input name="timeout_seconds" type="number" min="1" max="60" value="{{ values.timeout_seconds }}">
+        </label>
+      </div>
+
+      <label class="checkbox">
+        <input type="checkbox" name="enabled" value="true" {% if values.enabled %}checked{% endif %}>
+        <span>Цель включена</span>
+      </label>
+
+      <div class="actions">
+        <button type="submit">{{ submit_label }}</button>
+        <a class="button secondary" href="{{ cancel_url }}">Отмена</a>
+      </div>
+    </form>
+  </main>
+
+  <script src="/static/form.js"></script>
+</body>
+</html>
