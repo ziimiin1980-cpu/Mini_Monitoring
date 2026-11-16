@@ -34,9 +34,7 @@ class Target(Base):
     interval_seconds: Mapped[int] = mapped_column(Integer, server_default="60")
     timeout_seconds: Mapped[int] = mapped_column(Integer, server_default="5")
     enabled: Mapped[bool] = mapped_column(Boolean, server_default="true")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -48,12 +46,8 @@ class CheckResult(Base):
     __tablename__ = "check_results"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    target_id: Mapped[int] = mapped_column(
-        ForeignKey("targets.id", ondelete="CASCADE")
-    )
-    checked_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    target_id: Mapped[int] = mapped_column(ForeignKey("targets.id", ondelete="CASCADE"))
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     ok: Mapped[bool] = mapped_column(Boolean)
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     status_code: Mapped[int | None] = mapped_column(Integer)
@@ -61,6 +55,4 @@ class CheckResult(Base):
     details: Mapped[dict | None] = mapped_column(JSON)
 
     # Индекс нужен для быстрой выборки истории по цели с сортировкой по времени
-    __table_args__ = (
-        Index("ix_check_results_target_checked", "target_id", "checked_at"),
-    )
+    __table_args__ = (Index("ix_check_results_target_checked", "target_id", "checked_at"),)

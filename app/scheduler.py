@@ -1,6 +1,6 @@
 import logging
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -22,7 +22,7 @@ CLEANUP_INTERVAL_SECONDS = 3600
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def run_due_checks(
@@ -90,15 +90,11 @@ def run_due_checks(
         except IntegrityError:
             # Типичный случай: цель удалили, пока шла проверка
             session.rollback()
-            logger.warning(
-                "Цель '%s' удалена во время проверки — результат не сохранён", name
-            )
+            logger.warning("Цель '%s' удалена во время проверки — результат не сохранён", name)
             continue
         except Exception:
             session.rollback()
-            logger.exception(
-                "Не удалось сохранить результат проверки цели '%s'", name
-            )
+            logger.exception("Не удалось сохранить результат проверки цели '%s'", name)
             continue
 
         checked += 1
@@ -119,9 +115,7 @@ def cleanup_old_results(
     now = now or _utcnow()
     cutoff = now - timedelta(days=days)
 
-    result = session.execute(
-        delete(CheckResult).where(CheckResult.checked_at < cutoff)
-    )
+    result = session.execute(delete(CheckResult).where(CheckResult.checked_at < cutoff))
     session.commit()
 
     deleted = result.rowcount or 0
@@ -157,9 +151,7 @@ class Scheduler:
             target=self._loop, name="mini-monitoring-scheduler", daemon=True
         )
         self._thread.start()
-        logger.info(
-            "Планировщик проверок запущен (проверка каждые %s с)", self._tick_seconds
-        )
+        logger.info("Планировщик проверок запущен (проверка каждые %s с)", self._tick_seconds)
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -176,8 +168,7 @@ class Scheduler:
 
             if (
                 self._last_cleanup is None
-                or (now - self._last_cleanup).total_seconds()
-                >= CLEANUP_INTERVAL_SECONDS
+                or (now - self._last_cleanup).total_seconds() >= CLEANUP_INTERVAL_SECONDS
             ):
                 cleanup_old_results(session, self._retention_days, now)
                 self._last_cleanup = now

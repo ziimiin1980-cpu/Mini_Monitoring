@@ -13,9 +13,7 @@ CHECKERS = {
 }
 
 
-def run_check(
-    target_type: str, config: dict[str, Any], timeout: float = 5
-) -> CheckOutcome:
+def run_check(target_type: str, config: dict[str, Any], timeout: float = 5) -> CheckOutcome:
     """Выполняет проверку нужного типа.
 
     Никогда не выбрасывает исключения: любая проблема возвращается как

@@ -39,9 +39,7 @@ def check_tcp(config: dict[str, Any], timeout: float = 5) -> CheckOutcome:
             details=details,
         )
 
-    return CheckOutcome(
-        ok=True, latency_ms=_elapsed_ms(started), details=details
-    )
+    return CheckOutcome(ok=True, latency_ms=_elapsed_ms(started), details=details)
 
 
 def _elapsed_ms(started: float) -> int:

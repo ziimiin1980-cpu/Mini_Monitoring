@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import case, func, select
@@ -28,9 +28,7 @@ DUPLICATE_NAME_MESSAGE = "Цель с таким именем уже сущес�
 def _get_target_or_404(db: Session, target_id: int) -> Target:
     target = db.get(Target, target_id)
     if target is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Цель не найдена"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Цель не найдена")
     return target
 
 
@@ -42,7 +40,7 @@ def _commit(db: Session) -> None:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=DUPLICATE_NAME_MESSAGE
-        )
+        ) from None
 
 
 @router.get("", response_model=list[TargetRead], summary="Список целей мониторинга")
@@ -74,9 +72,7 @@ def create_target(payload: TargetCreate, db: Session = Depends(get_db)) -> Targe
     response_model=TargetRead,
     summary="Изменить цель целиком",
 )
-def update_target(
-    target_id: int, payload: TargetCreate, db: Session = Depends(get_db)
-) -> Target:
+def update_target(target_id: int, payload: TargetCreate, db: Session = Depends(get_db)) -> Target:
     target = _get_target_or_404(db, target_id)
     for field, value in payload.model_dump().items():
         setattr(target, field, value)
@@ -103,9 +99,7 @@ def delete_target(target_id: int, db: Session = Depends(get_db)) -> None:
 )
 def get_history(
     target_id: int,
-    limit: int = Query(
-        100, ge=1, le=1000, description="Сколько последних проверок вернуть"
-    ),
+    limit: int = Query(100, ge=1, le=1000, description="Сколько последних проверок вернуть"),
     db: Session = Depends(get_db),
 ) -> list[CheckResult]:
     _get_target_or_404(db, target_id)
@@ -131,7 +125,7 @@ def check_target_now(target_id: int, db: Session = Depends(get_db)) -> CheckResu
 
     result = CheckResult(
         target_id=target.id,
-        checked_at=datetime.now(timezone.utc),
+        checked_at=datetime.now(UTC),
         ok=outcome.ok,
         latency_ms=outcome.latency_ms,
         status_code=outcome.status_code,
@@ -150,7 +144,7 @@ def check_target_now(target_id: int, db: Session = Depends(get_db)) -> CheckResu
     summary="Текущее состояние всех целей",
 )
 def get_status(db: Session = Depends(get_db)) -> list[TargetStatus]:
-    since = datetime.now(timezone.utc) - timedelta(hours=UPTIME_WINDOW_HOURS)
+    since = datetime.now(UTC) - timedelta(hours=UPTIME_WINDOW_HOURS)
 
     # За последние 24 часа: сколько всего проверок и сколько успешных
     aggregates = {

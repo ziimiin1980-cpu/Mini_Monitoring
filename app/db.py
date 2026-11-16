@@ -18,7 +18,7 @@ class Base(DeclarativeBase):
     """Базовый класс для всех моделей (таблиц) приложения."""
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     """Открывает сессию базы данных на время запроса и закрывает её после."""
     db = SessionLocal()
     try:

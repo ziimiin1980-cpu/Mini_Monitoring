@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, delete, event, select
@@ -26,9 +26,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, _record):
     cursor.close()
 
 
-TestingSessionLocal = sessionmaker(
-    bind=engine, autoflush=False, expire_on_commit=False
-)
+TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
 @pytest.fixture
@@ -78,7 +76,7 @@ def test_checks_only_enabled_targets(session, monkeypatch):
     enabled = make_target(session, name="Включена")
     make_target(session, name="Выключена", enabled=False)
 
-    checked = run_due_checks(session, {}, datetime.now(timezone.utc))
+    checked = run_due_checks(session, {}, datetime.now(UTC))
 
     results = session.scalars(select(CheckResult)).all()
     assert checked == 1
@@ -92,7 +90,7 @@ def test_respects_interval(session, monkeypatch):
     )
     target = make_target(session, interval_seconds=60)
     last_run: dict[int, datetime] = {}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     first = run_due_checks(session, last_run, now)
     too_soon = run_due_checks(session, last_run, now + timedelta(seconds=10))
@@ -109,7 +107,7 @@ def test_stores_successful_result(session, monkeypatch):
         fake_checker(CheckOutcome(ok=True, latency_ms=42, status_code=200)),
     )
     make_target(session)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     run_due_checks(session, {}, now)
 
@@ -118,7 +116,7 @@ def test_stores_successful_result(session, monkeypatch):
     assert result.latency_ms == 42
     assert result.status_code == 200
     assert result.error is None
-    assert result.checked_at.replace(tzinfo=timezone.utc) == now
+    assert result.checked_at.replace(tzinfo=UTC) == now
 
 
 def test_stores_failed_result(session, monkeypatch):
@@ -128,7 +126,7 @@ def test_stores_failed_result(session, monkeypatch):
     )
     make_target(session)
 
-    run_due_checks(session, {}, datetime.now(timezone.utc))
+    run_due_checks(session, {}, datetime.now(UTC))
 
     result = session.scalars(select(CheckResult)).one()
     assert result.ok is False
@@ -137,7 +135,7 @@ def test_stores_failed_result(session, monkeypatch):
 
 def test_cleanup_removes_only_old_results(session):
     target = make_target(session)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     session.add_all(
         [
             CheckResult(
@@ -199,7 +197,7 @@ def test_target_deleted_during_check_does_not_break_scheduler(session, monkeypat
     monkeypatch.setattr("app.scheduler.run_check", checker_that_deletes_target)
 
     try:
-        checked = run_due_checks(session, {}, datetime.now(timezone.utc))
+        checked = run_due_checks(session, {}, datetime.now(UTC))
     finally:
         other_session.close()
 
@@ -209,9 +207,7 @@ def test_target_deleted_during_check_does_not_break_scheduler(session, monkeypat
 
 def test_other_targets_are_checked_after_one_is_deleted_mid_check(session, monkeypatch):
     first = make_target(session, name="Первый", config={"url": "https://first.example"})
-    second = make_target(
-        session, name="Второй", config={"url": "https://second.example"}
-    )
+    second = make_target(session, name="Второй", config={"url": "https://second.example"})
     other_session = TestingSessionLocal()
 
     def checker(target_type, config, timeout=5):
@@ -224,7 +220,7 @@ def test_other_targets_are_checked_after_one_is_deleted_mid_check(session, monke
     monkeypatch.setattr("app.scheduler.run_check", checker)
 
     try:
-        checked = run_due_checks(session, {}, datetime.now(timezone.utc))
+        checked = run_due_checks(session, {}, datetime.now(UTC))
     finally:
         other_session.close()
 

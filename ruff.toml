@@ -1,0 +1,16 @@
+line-length = 100
+target-version = "py313"
+
+[lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    # Depends(...) в аргументах функции — рекомендованный FastAPI способ
+    "B008",
+]
+
+[lint.per-file-ignores]
+# Файлы миграций генерируются Alembic и не правятся руками
+"alembic/versions/*" = ["E501", "UP007", "I001", "UP035"]
+
+[format]
+quote-style = "double"

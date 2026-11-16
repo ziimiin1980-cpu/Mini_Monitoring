@@ -40,9 +40,7 @@ def check_http(config: dict[str, Any], timeout: float = 5) -> CheckOutcome:
     started = time.perf_counter()
     try:
         # follow_redirects=True: нам важен конечный адрес, а не сам редирект
-        with httpx.Client(
-            timeout=timeout, follow_redirects=True, headers=headers
-        ) as client:
+        with httpx.Client(timeout=timeout, follow_redirects=True, headers=headers) as client:
             response = client.request(method, url)
     except httpx.TimeoutException:
         return CheckOutcome(

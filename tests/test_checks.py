@@ -4,7 +4,6 @@ import pytest
 from app import checks
 from app.checks import check_http, check_process, check_tcp, run_check
 
-
 # ---------- HTTP ----------
 
 
@@ -163,9 +162,7 @@ def tcp_calls(monkeypatch):
             raise state["error"]
         return FakeSocket()
 
-    monkeypatch.setattr(
-        "app.checks.tcp.socket.create_connection", fake_create_connection
-    )
+    monkeypatch.setattr("app.checks.tcp.socket.create_connection", fake_create_connection)
     return calls, state
 
 
@@ -222,9 +219,7 @@ class FakeProcess:
 @pytest.fixture
 def fake_processes(monkeypatch):
     processes: list[FakeProcess] = [FakeProcess(1234, "python.exe")]
-    monkeypatch.setattr(
-        "app.checks.process.psutil.process_iter", lambda attrs=None: processes
-    )
+    monkeypatch.setattr("app.checks.process.psutil.process_iter", lambda attrs=None: processes)
     return processes
 
 

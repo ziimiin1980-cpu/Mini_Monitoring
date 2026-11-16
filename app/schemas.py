@@ -14,9 +14,7 @@ class HttpCheckConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     url: HttpUrl = Field(description="Адрес, который проверяем")
-    method: Literal["GET", "HEAD"] = Field(
-        default="GET", description="HTTP-метод проверки"
-    )
+    method: Literal["GET", "HEAD"] = Field(default="GET", description="HTTP-метод проверки")
     expected_status: int = Field(
         default=200, ge=100, le=599, description="Какой код ответа считается успехом"
     )
@@ -48,9 +46,7 @@ class ProcessCheckConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(
-        min_length=1, max_length=255, description="Имя процесса, например nginx.exe"
-    )
+    name: str = Field(min_length=1, max_length=255, description="Имя процесса, например nginx.exe")
 
 
 CHECK_CONFIGS: dict[str, type[BaseModel]] = {
@@ -83,9 +79,7 @@ class TargetCreate(BaseModel):
         except ValueError as exc:
             # Переводим ошибку вложенной схемы в понятное сообщение
             problems = _format_validation_error(exc)
-            raise ValueError(
-                f"Некорректные параметры для типа '{self.type}': {problems}"
-            ) from exc
+            raise ValueError(f"Некорректные параметры для типа '{self.type}': {problems}") from exc
 
         self.config = parsed.model_dump(mode="json", exclude_none=True)
         return self

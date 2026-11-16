@@ -13,9 +13,7 @@ def check_process(config: dict[str, Any], timeout: float = 5) -> CheckOutcome:
     """
     name = str(config.get("name", "")).strip()
     if not name:
-        return CheckOutcome(
-            ok=False, error="В параметрах проверки не указано имя процесса"
-        )
+        return CheckOutcome(ok=False, error="В параметрах проверки не указано имя процесса")
 
     wanted = name.lower()
     try:
