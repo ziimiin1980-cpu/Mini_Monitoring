@@ -7,15 +7,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.checks import run_check
+from app.config import settings
 from app.db import SessionLocal
 from app.models import CheckResult, Target
 
 logger = logging.getLogger(__name__)
 
 # Как часто планировщик просыпается и смотрит, какие цели пора проверить
-CHECK_TICK_SECONDS = 5
+CHECK_TICK_SECONDS = settings.check_tick_seconds
 # Сколько дней хранить историю проверок
-RETENTION_DAYS = 30
+RETENTION_DAYS = settings.retention_days
 # Как часто удалять устаревшую историю
 CLEANUP_INTERVAL_SECONDS = 3600
 

@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
+from app.messages import format_errors
+
 TargetType = Literal["http", "tcp", "process"]
 
 
@@ -143,13 +145,8 @@ class HistoryItem(BaseModel):
 
 
 def _format_validation_error(exc: ValueError) -> str:
-    """Собирает ошибки Pydantic в одну читаемую строку."""
+    """Собирает ошибки Pydantic в одну читаемую строку (по-русски)."""
     errors = getattr(exc, "errors", None)
     if not callable(errors):
         return str(exc)
-
-    parts = []
-    for error in errors():
-        location = ".".join(str(item) for item in error.get("loc", ())) or "config"
-        parts.append(f"{location}: {error.get('msg', 'некорректное значение')}")
-    return "; ".join(parts) or str(exc)
+    return format_errors(errors())

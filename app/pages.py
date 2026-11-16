@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.messages import format_errors
 from app.models import CheckResult, Target
 from app.schemas import TargetCreate
 
@@ -68,13 +69,7 @@ def _form_values(target: Target | None = None) -> dict[str, Any]:
 
 def _error_text(exc: ValidationError) -> str:
     """Собирает ошибки Pydantic в одну понятную строку для формы."""
-    parts = []
-    for error in exc.errors():
-        message = str(error.get("msg", "некорректное значение"))
-        if message.startswith("Value error, "):
-            message = message[len("Value error, ") :]
-        parts.append(message)
-    return "; ".join(parts)
+    return format_errors(exc.errors())
 
 
 def _build_payload(
