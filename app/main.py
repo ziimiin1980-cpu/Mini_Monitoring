@@ -5,11 +5,13 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.api import router as api_router
 from app.db import get_db
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Mini Monitoring", version="0.1.0")
+app.include_router(api_router)
 
 
 @app.get("/health", response_class=JSONResponse)
