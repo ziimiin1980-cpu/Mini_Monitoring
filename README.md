@@ -59,6 +59,7 @@ Mini_Monitoring/
 │   ├── scheduler.py    # фоновый планировщик проверок и очистка истории
 │   ├── config.py       # настройки приложения из файла .env
 │   ├── db.py           # подключение к БД, сессии, базовый класс Base
+│   ├── messages.py     # понятные русские сообщения об ошибках
 │   ├── models.py       # модели таблиц targets и check_results
 │   ├── templates/      # HTML-шаблоны: дашборд, страница цели, форма
 │   ├── static/         # style.css, app.js, target.js, form.js
@@ -78,8 +79,12 @@ Mini_Monitoring/
 │   ├── test_scheduler.py # тесты планировщика и очистки истории
 │   ├── test_status.py  # тесты /api/status, истории и ручной проверки
 │   ├── test_pages.py   # тесты HTML-страниц дашборда
-│   └── test_forms.py   # тесты форм добавления/правки/удаления целей
+│   ├── test_forms.py   # тесты форм добавления/правки/удаления целей
+│   ├── test_config.py  # тесты настроек приложения
+│   └── test_errors.py  # тесты сообщений об ошибках
 ├── prompts/            # системные промпты для AI-агентов OpenCode
+├── scripts/            # служебные скрипты (резервное копирование БД)
+├── start.bat           # запуск приложения в один клик (Windows)
 ├── alembic.ini         # конфигурация Alembic
 ├── .env.example        # пример настроек (без секретов)
 ├── requirements.txt    # зависимости проекта
@@ -125,6 +130,10 @@ py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+**Быстрый запуск двойным щелчком:** `start.bat` в корне проекта. Он проверит,
+что есть `.venv` и `.env`, и запустит сервер без `--reload`. Сообщения в нём на
+английском: Windows-консоль ненадёжно отображает кириллицу в bat-файлах.
+
 После запуска:
 
 - <http://127.0.0.1:8000/> — **дашборд** с состоянием всех целей;
@@ -133,7 +142,7 @@ py -3.13 -m venv .venv
   `{"status":"error","database":"unavailable"}`;
 - <http://127.0.0.1:8000/docs> — интерактивная документация API (Swagger UI).
 
-Остановить сервер — `Ctrl+C` в окне терминала.
+Остановить сервер — `Ctrl+C` в окне терминала (или закрыть окно `start.bat`).
 
 Альтернатива: активировать окружение и пользоваться короткими командами.
 
@@ -142,6 +151,19 @@ py -3.13 -m venv .venv
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 deactivate                       # выйти из окружения
 ```
+
+### Настройки
+
+Все настройки хранятся в `.env` (пример — `.env.example`):
+
+| Переменная | По умолчанию | Назначение |
+|---|---|---|
+| `DATABASE_URL` | — (обязательна) | строка подключения к PostgreSQL |
+| `CHECK_TICK_SECONDS` | `5` | как часто планировщик проверяет, каким целям пора проверяться |
+| `RETENTION_DAYS` | `30` | сколько дней хранить историю проверок |
+| `LOG_LEVEL` | `INFO` | уровень логирования (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+
+Файл `.env` ищется в корне проекта, поэтому приложение можно запускать из любого каталога.
 
 ## Дашборд
 
@@ -270,6 +292,89 @@ $env:PGPASSWORD='<пароль postgres>'
 & 'D:\postgresql\bin\psql.exe' -U postgres -h 127.0.0.1 -d mini_monitoring -c `
   "select t.name, r.ok, r.latency_ms, r.error, r.checked_at from check_results r join targets t on t.id = r.target_id order by r.id desc limit 20;"
 ```
+
+## Логи
+
+Приложение пишет журнал в консоль и в файл `logs/app.log` (ротация: до 5 файлов
+по 1 МБ). Уровень задаётся переменной `LOG_LEVEL` в `.env`.
+
+- ошибки проверок — `WARNING`;
+- неожиданные ошибки приложения — `ERROR` с полным стектрейсом **только в файл**;
+- пользователю при этом отдаётся понятное сообщение, а не техническая ошибка.
+
+Каталог `logs/` в Git не попадает.
+
+## Резервные копии
+
+```powershell
+# дамп базы в папку backups/ (имя файла содержит дату и время)
+.\scripts\backup_db.ps1
+
+# если pg_dump не в PATH и не в стандартном месте
+.\scripts\backup_db.ps1 -PgBin "D:\postgresql\bin"
+```
+
+Скрипт берёт строку подключения из `.env`, поэтому пароль вводить не нужно.
+Формат дампа — `custom` (восстанавливается через `pg_restore`):
+
+```powershell
+pg_restore --clean --dbname "postgresql://postgres:пароль@localhost:5432/mini_monitoring" backups\mini_monitoring-20261116-190000.dump
+```
+
+Папка `backups/` в Git не попадает. Скрипт удобно запускать вручную раз в неделю
+или добавить в Планировщик заданий Windows вместе с автозапуском приложения.
+
+## Перенос на Linux
+
+Код приложения не привязан к Windows. Порядок переноса:
+
+```bash
+# 1. Код и окружение
+cd /opt/mini_monitoring            # каталог с проектом
+python3.13 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# 2. Настройки и база
+cp .env.example .env               # вписать реальный пароль PostgreSQL
+.venv/bin/alembic upgrade head
+
+# 3. Запуск
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+```
+
+Особенности, о которых стоит помнить:
+
+1. **Виртуальное окружение не переносится** между ОС — на Linux создаётся заново.
+2. **Проверка процессов:** имена другие (`nginx`, а не `nginx.exe`), длинные имена
+   обрезаются до 15 символов. Цели типа `process` нужно поправить.
+3. **Время:** в базе хранится UTC. Страница цели показывает время в поясе сервера,
+   поэтому на Linux это будет UTC, а дашборд — время браузера.
+4. **Один процесс:** запускать с `--workers 1`, иначе каждый воркер создаст свой
+   планировщик и проверки начнут дублироваться.
+5. **Автозапуск:** вместо `start.bat` используется systemd-юнит, например:
+
+```ini
+# /etc/systemd/system/mini-monitoring.service
+[Unit]
+Description=Mini Monitoring
+After=network.target postgresql.service
+
+[Service]
+WorkingDirectory=/opt/mini_monitoring
+ExecStart=/opt/mini_monitoring/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=on-failure
+User=monitoring
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now mini-monitoring
+```
+
+Автозапуск на Windows (Планировщик заданий) — следующий шаг, пока не настроен.
 
 ## Тесты
 

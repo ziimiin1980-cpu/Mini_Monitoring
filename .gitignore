@@ -32,3 +32,6 @@ Desktop.ini
 # Логи
 *.log
 logs/
+
+# Резервные копии базы данных
+backups/
