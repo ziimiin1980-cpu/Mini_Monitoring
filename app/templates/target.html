@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }} — Mini Monitoring</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="/">← Все цели</a></h1>
+    <div class="topbar-right">
+      <button id="check-now" data-target-id="{{ target.id }}">Проверить сейчас</button>
+    </div>
+  </header>
+
+  <main>
+    <h2>{{ target.name }}</h2>
+
+    <dl class="details">
+      <dt>Тип</dt>
+      <dd>{{ target.type }}</dd>
+
+      <dt>Параметры</dt>
+      <dd><code>{{ target.config }}</code></dd>
+
+      <dt>Интервал</dt>
+      <dd>{{ target.interval_seconds }} с</dd>
+
+      <dt>Таймаут</dt>
+      <dd>{{ target.timeout_seconds }} с</dd>
+
+      <dt>Включена</dt>
+      <dd>{{ "да" if target.enabled else "нет" }}</dd>
+    </dl>
+
+    <h2>Последние проверки</h2>
+
+    {% if history %}
+    <table>
+      <thead>
+        <tr>
+          <th>Время</th>
+          <th>Результат</th>
+          <th>Задержка</th>
+          <th>Код</th>
+          <th>Ошибка</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for check in history %}
+        <tr>
+          <td>{{ check.checked_at.strftime("%d.%m.%Y %H:%M:%S") }}</td>
+          <td>
+            {% if check.ok %}
+            <span class="badge ok">успех</span>
+            {% else %}
+            <span class="badge fail">ошибка</span>
+            {% endif %}
+          </td>
+          <td>{% if check.latency_ms is not none %}{{ check.latency_ms }} мс{% else %}—{% endif %}</td>
+          <td>{% if check.status_code is not none %}{{ check.status_code }}{% else %}—{% endif %}</td>
+          <td>{{ check.error or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">Проверок ещё не было. Нажмите «Проверить сейчас».</p>
+    {% endif %}
+  </main>
+
+  <script src="/static/target.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Mini Monitoring</h1>
+    <div class="topbar-right">
+      <span id="updated" class="muted">загружаю данные…</span>
+      <a href="/docs">API</a>
+    </div>
+  </header>
+
+  <main>
+    <table>
+      <thead>
+        <tr>
+          <th>Цель</th>
+          <th>Тип</th>
+          <th>Статус</th>
+          <th>Задержка</th>
+          <th>Доступность 24 ч</th>
+          <th>Проверок 24 ч</th>
+          <th>Последняя проверка</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <p id="empty" class="muted hidden">
+      Целей пока нет. Добавить их можно через <a href="/docs">Swagger UI</a>
+      (страница управления появится на следующем этапе).
+    </p>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,15 +1,18 @@
 import logging
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api import router as api_router
 from app.api import status_router
 from app.db import get_db
+from app.pages import BASE_DIR
+from app.pages import router as pages_router
 from app.scheduler import scheduler
 
 logging.basicConfig(
@@ -35,6 +38,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Mini Monitoring", version="0.1.0", lifespan=lifespan)
 app.include_router(api_router)
 app.include_router(status_router)
+app.include_router(pages_router)
+
+# Статические файлы (CSS и JavaScript) дашборда
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 
 @app.get("/health", response_class=JSONResponse)
