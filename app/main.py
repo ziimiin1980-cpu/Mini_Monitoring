@@ -1,4 +1,6 @@
 import logging
+from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
 
 from fastapi import Depends, FastAPI
 from fastapi.responses import JSONResponse
@@ -7,10 +9,29 @@ from sqlalchemy.orm import Session
 
 from app.api import router as api_router
 from app.db import get_db
+from app.scheduler import scheduler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+# httpx пишет INFO на каждый запрос — при частых проверках это засоряет журнал
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Mini Monitoring", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Запускает планировщик проверок вместе с приложением и останавливает при выключении."""
+    scheduler.start()
+    try:
+        yield
+    finally:
+        scheduler.stop()
+
+
+app = FastAPI(title="Mini Monitoring", version="0.1.0", lifespan=lifespan)
 app.include_router(api_router)
 
 
